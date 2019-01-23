@@ -1,4 +1,4 @@
-Pyxiv [![Build Status](https://travis-ci.org/upbit/pixivpy.svg)](https://travis-ci.org/upbit/pixivpy)
+Pyxiv [![Build Status](https://travis-ci.org/Kyle2142/pyxiv.svg)](https://travis-ci.org/Kyle2142/pyxiv)
 ======
 _Pixiv API for Python (with Auth supported)_ Now async!
 
@@ -27,10 +27,10 @@ pip3 install git+git://github.com/Kyle2142/pyxiv
 ### Example:
 
 ~~~python
+import asyncio
 from pyxiv import *
 
-async def main():
-    api = AppPixivAPI()
+async def main(api):
     await api.login('username', 'password')
     
     # get origin url
@@ -49,6 +49,8 @@ async def main():
     json_result = await api.illust_ranking(**next_qs)
     for illust in json_result.illusts:
         print(" p2 [%s] %s" % (illust.title, illust.image_urls.medium))
+	
+asyncio.get_event_loop().run_until_complete(main(AppPixivAPI()))
 ~~~
 
 ### [Sniffer - App API](https://github.com/upbit/pixivpy/wiki#6x-api)
@@ -76,36 +78,36 @@ class AppPixivAPI(BasePixivAPI):
     def parse_qs(self, next_url):
 
     # 用户详情 (无需登录)
-    def user_detail(self, user_id):
+    async def user_detail(self, user_id):
 
     # 用户作品列表 (无需登录)
-    def user_illusts(self, user_id, type='illust'):
+    async def user_illusts(self, user_id, type='illust'):
 
     # 用户收藏作品列表 (无需登录)
-    def user_bookmarks_illust(self, user_id, restrict='public'):
+    async def user_bookmarks_illust(self, user_id, restrict='public'):
 
     # 关注用户的新作
     # restrict: [public, private]
-    def illust_follow(self, restrict='public'):
+    async def illust_follow(self, restrict='public'):
 
     # 作品详情 (无需登录，同PAPI.works)
-    def illust_detail(self, illust_id):
+    async def illust_detail(self, illust_id):
 
     # 相关作品列表 (无需登录)
-    def illust_related(self, illust_id):
+    async def illust_related(self, illust_id):
 
     # 插画推荐 (Home - Main) (无需登录)
     # content_type: [illust, manga]
-    def illust_recommended(self, content_type='illust'):
+    async def illust_recommended(self, content_type='illust'):
 
     # 作品排行
     # mode: [day, week, month, day_male, day_female, week_original, week_rookie, day_manga]
     # date: '2016-08-01'
     # mode(r18榜单需登录): [day_r18, day_male_r18, day_female_r18, week_r18, week_r18g]
-    def illust_ranking(self, mode='day', date=None, offset=None):
+    async def illust_ranking(self, mode='day', date=None, offset=None):
 
     # 趋势标签 (Search - tags) (无需登录)
-    def trending_tags_illust(self):
+    async def trending_tags_illust(self):
 
     # 搜索 (Search) (无需登录)
     # search_target - 搜索类型
@@ -114,44 +116,44 @@ class AppPixivAPI(BasePixivAPI):
     #   title_and_caption       - 标题说明文
     # sort: [date_desc, date_asc]
     # duration: [within_last_day, within_last_week, within_last_month]
-    def search_illust(self, word, search_target='partial_match_for_tags', sort='date_desc', duration=None):
+    async def search_illust(self, word, search_target='partial_match_for_tags', sort='date_desc', duration=None):
 
     # 作品收藏详情 (无需登录)
-    def illust_bookmark_detail(self, illust_id):
+    async def illust_bookmark_detail(self, illust_id):
 
     # 新增收藏
-    def illust_bookmark_add(self, illust_id, restrict='public', tags=None):
+    async def illust_bookmark_add(self, illust_id, restrict='public', tags=None):
 
     # 删除收藏
-    def illust_bookmark_delete(self, illust_id):
+    async def illust_bookmark_delete(self, illust_id):
 
     # 用户收藏标签列表
-    def user_bookmark_tags_illust(self, restrict='public', offset=None):
+    async def user_bookmark_tags_illust(self, restrict='public', offset=None):
 
     # Following用户列表 (无需登录)
-    def user_following(self, user_id, restrict='public', offset=None):
+    async def user_following(self, user_id, restrict='public', offset=None):
 
     # Followers用户列表 (无需登录)
-    def user_follower(self, user_id, filter='for_ios', offset=None):
+    async def user_follower(self, user_id, filter='for_ios', offset=None):
 
     # 好P友 (无需登录)
-    def user_mypixiv(self, user_id, offset=None):
+    async def user_mypixiv(self, user_id, offset=None):
 
     # 黑名单用户 (无需登录)
-    def user_list(self, user_id, filter='for_ios', offset=None):
+    async def user_list(self, user_id, filter='for_ios', offset=None):
 
     # 获取ugoira信息
-    def ugoira_metadata(self, illust_id):
+    async def ugoira_metadata(self, illust_id):
 ~~~
 
-[Example](https://github.com/upbit/pixivpy/blob/master/demo.py#L42):
+[Example](https://github.com/Kyle2142/pyxiv/blob/master/demo.py):
 
 ~~~python
+import asyncio
 from pyxiv import AppPixivAPI
-aapi = AppPixivAPI()
 
 async def main(aapi):
-    await aapi.login()
+    await aapi.login('username', 'password')
     
     # 作品推荐
     json_result = await aapi.illust_recommended()
@@ -207,6 +209,8 @@ async def main(aapi):
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
+    
+asyncio.get_event_loop().run_until_complete(main(AppPixivAPI()))
 ~~~
 
 ### Public-API
@@ -217,35 +221,35 @@ async def main(aapi):
 class PixivAPI(BasePixivAPI):
 
 	# 作品详细
-	def works(self, illust_id):
+	async def works(self, illust_id):
 
 	# 用户资料
-	def users(self, author_id):
+	async def users(self, author_id):
 
 	# 我的订阅
-	def me_feeds(self, show_r18=1):
+	async def me_feeds(self, show_r18=1):
 
 	# 获取收藏夹
-	def me_favorite_works(self,page=1,per_page=50,image_sizes=['px_128x128', 'px_480mw', 'large']):
+	async def me_favorite_works(self,page=1,per_page=50,image_sizes=['px_128x128', 'px_480mw', 'large']):
 
 	# 添加收藏
 	# publicity:  public, private
-	def me_favorite_works_add(self, work_id, publicity='public'):
+	async def me_favorite_works_add(self, work_id, publicity='public'):
 
 	# 删除收藏
-	def me_favorite_works_delete(self, ids):
+	async def me_favorite_works_delete(self, ids):
 
 	# 关注用户
 	# publicity:  public, private
-	def me_favorite_users_follow(self, user_id, publicity='public'):
+	async def me_favorite_users_follow(self, user_id, publicity='public'):
 
 	# 用户作品
 	# publicity:  public, private
-	def users_works(self, author_id, page=1, per_page=30, publicity='public'):
+	async def users_works(self, author_id, page=1, per_page=30, publicity='public'):
 
 	# 用户收藏
 	# publicity:  public, private
-	def users_favorite_works(self, author_id, page=1, per_page=30, publicity='public'):
+	async def users_favorite_works(self, author_id, page=1, per_page=30, publicity='public'):
 
 	# 排行榜/过去排行榜
 	# mode:
@@ -263,7 +267,7 @@ class PixivAPI(BasePixivAPI):
 	#   r18g
 	# page: 1-n
 	# date: '2015-04-01' (仅过去排行榜)
-	def ranking_all(self, mode='daily', page=1, per_page=50, date=None):
+	async def ranking_all(self, mode='daily', page=1, per_page=50, date=None):
 
 	# 搜索
 	# query: 搜索的文字
@@ -281,12 +285,12 @@ class PixivAPI(BasePixivAPI):
 	# order:
 	#   desc - 新顺序
 	#   asc - 旧顺序
-	def search_works(self, query, page=1, per_page=30, mode='text',
+	async def search_works(self, query, page=1, per_page=30, mode='text',
 		period='all', order='desc', sort='date'):
 
 ~~~
 
-[Usage](https://github.com/upbit/pixivpy/blob/master/demo.py#L42):
+Sample usage:
 
 ~~~python
 from pyxiv import PixivAPI
