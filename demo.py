@@ -1,165 +1,169 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import asyncio
 import sys
-if sys.version_info >= (3, 0):
-    import imp
-    imp.reload(sys)
-else:
-    reload(sys)
-    sys.setdefaultencoding('utf8')
+
+from pyxiv import *
+
 sys.dont_write_bytecode = True
 
-from pixivpy3 import *
 
 ## change _USERNAME,_PASSWORD first!
 _USERNAME = "userbay"
 _PASSWORD = "userpay"
 _TEST_WRITE = False
 
-## If a special network environment is met, please configure requests as you need.
+## If a special network environment is met, please configure aiohttp as you need.
 ## Otherwise, just keep it empty.
-_REQUESTS_KWARGS = {
-  # 'proxies': {
-  #   'https': 'http://127.0.0.1:1087',
-  # },
-  # 'verify': False,       # PAPI use https, an easy way is disable requests SSL verify
+_AIOHTTP_KWARGS = {
+    # 'proxies': {
+    #   'https': 'http://127.0.0.1:1087',
+    # },
+    # 'verify': False,       # PAPI use https, an easy way is disable aiohttp SSL verify
 }
+
 
 ## AppAPI start
 
-def appapi_illust(aapi):
-    json_result = aapi.illust_detail(59580629)
+async def appapi_illust(aapi):
+    json_result = await aapi.illust_detail(59580629)
     print(json_result)
     illust = json_result.illust
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-    json_result = aapi.illust_comments(59580629)
+    json_result = await aapi.illust_comments(59580629)
     print(json_result)
 
-    json_result = aapi.ugoira_metadata(51815717)
+    json_result = await aapi.ugoira_metadata(51815717)
     print(json_result)
     metadata = json_result.ugoira_metadata
     print(">>> frames=%d %s" % (len(metadata.frames), metadata.zip_urls.medium))
 
-def appapi_recommend(aapi):
-    json_result = aapi.illust_recommended(bookmark_illust_ids=[59580629])
+
+async def appapi_recommend(aapi):
+    json_result = await aapi.illust_recommended(bookmark_illust_ids=[59580629])
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
     next_qs = aapi.parse_qs(json_result.next_url)
-    json_result = aapi.illust_recommended(**next_qs)
+    json_result = await aapi.illust_recommended(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
     print("  > %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-    json_result = aapi.illust_related(59580629)
+    json_result = await aapi.illust_related(59580629)
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-    # get next page
-    next_qs = aapi.parse_qs(json_result.next_url)
-    json_result = aapi.illust_related(**next_qs)
-    # print(json_result)
-    illust = json_result.illusts[0]
-    print("  > %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-def appapi_users(aapi):
-    json_result = aapi.user_detail(275527)
+# this section does not work right now
+    # get next page
+# next_qs = aapi.parse_qs(json_result.next_url)
+# json_result = await aapi.illust_related(**next_qs)
+    # print(json_result)
+# illust = json_result.illusts[0]
+# print("  > %s, origin url: %s" % (illust.title, illust.image_urls['large']))
+
+
+async def appapi_users(aapi):
+    json_result = await aapi.user_detail(275527)
     print(json_result)
     user = json_result.user
     print("%s(@%s) region=%s" % (user.name, user.account, json_result.profile.region))
 
-    json_result = aapi.user_illusts(275527)
+    json_result = await aapi.user_illusts(275527)
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
     next_qs = aapi.parse_qs(json_result.next_url)
-    json_result = aapi.user_illusts(**next_qs)
+    json_result = await aapi.user_illusts(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
     print("  > %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-    json_result = aapi.user_bookmarks_illust(2088434)
+    json_result = await aapi.user_bookmarks_illust(2088434)
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-    json_result = aapi.user_following(7314824)
+    json_result = await aapi.user_following(7314824)
     print(json_result)
     user_preview = json_result.user_previews[0]
     print(">>> %s(@%s)" % (user_preview.user.name, user_preview.user.account))
 
     next_qs = aapi.parse_qs(json_result.next_url)
-    json_result = aapi.user_following(**next_qs)
+    json_result = await aapi.user_following(**next_qs)
     # print(json_result)
     user_preview = json_result.user_previews[0]
     print("  > %s(@%s)" % (user_preview.user.name, user_preview.user.account))
 
-    json_result = aapi.user_follower(275527)
+    json_result = await aapi.user_follower(275527)
     print(json_result)
 
-    json_result = aapi.user_mypixiv(275527)
+    json_result = await aapi.user_mypixiv(275527)
     print(json_result)
 
-def appapi_search(aapi):
+
+async def appapi_search(aapi):
     first_tag = None
-    response = aapi.trending_tags_illust()
+    response = await aapi.trending_tags_illust()
     for trend_tag in response.trend_tags[:10]:
         if not first_tag:
             first_tag = trend_tag.tag
         print("%s -  %s(id=%s)" % (trend_tag.tag, trend_tag.illust.title, trend_tag.illust.id))
 
-    json_result = aapi.search_illust(first_tag, search_target='partial_match_for_tags')
+    json_result = await aapi.search_illust(first_tag, search_target='partial_match_for_tags')
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
     next_qs = aapi.parse_qs(json_result.next_url)
-    json_result = aapi.search_illust(**next_qs)
+    json_result = await aapi.search_illust(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-def appapi_ranking(aapi):
-    json_result = aapi.illust_ranking('day_male')
+
+async def appapi_ranking(aapi):
+    json_result = await aapi.illust_ranking('day_male')
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
     next_qs = aapi.parse_qs(json_result.next_url)
-    json_result = aapi.illust_ranking(**next_qs)
+    json_result = await aapi.illust_ranking(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # 2016-07-15 日的过去一周排行
-    json_result = aapi.illust_ranking('week', date='2016-07-15')
+    json_result = await aapi.illust_ranking('week', date='2016-07-15')
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-def appapi_auth_api(aapi):
-    json_result = aapi.illust_follow(req_auth=True)
+
+async def appapi_auth_api(aapi):
+    json_result = await aapi.illust_follow(req_auth=True)
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
     next_qs = aapi.parse_qs(json_result.next_url)
-    json_result = aapi.illust_follow(req_auth=True, **next_qs)
+    json_result = await aapi.illust_follow(req_auth=True, **next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
-    json_result = aapi.illust_recommended(req_auth=True)
+    json_result = await aapi.illust_recommended(req_auth=True)
     print(json_result)
     illust = json_result.illusts[0]
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
@@ -167,7 +171,7 @@ def appapi_auth_api(aapi):
 
 ## PAPI start
 
-def migrate_rev2_to_papi(api):
+async def migrate_rev2_to_papi(api):
     print(">>> new ranking_all(mode='daily', page=1, per_page=50)")
     # rank_list = api.sapi.ranking("all", 'day', 1)
     rank_list = api.ranking_all('daily', 1, 50)
@@ -180,7 +184,7 @@ def migrate_rev2_to_papi(api):
         print("[%s/%s(id=%s)] %s" % (img.work.user.name, img.work.title, img.work.id, img.work.image_urls.px_480mw))
 
 
-def papi_base(api):
+async def papi_base(api):
     # PAPI.works
     json_result = api.works(46363414)
     print(json_result)
@@ -193,7 +197,8 @@ def papi_base(api):
     user = json_result.response[0]
     print(user.profile.introduction)
 
-def papi_me(api):
+
+async def papi_me(api):
     # PAPI.me_feeds
     json_result = api.me_feeds(show_r18=0)
     print(json_result)
@@ -212,19 +217,22 @@ def papi_me(api):
     illust = json_result.response[0]
     print(">>> %s, origin url: %s" % (illust.caption, illust.image_urls['large']))
 
-    if _TEST_WRITE:
-        # PAPI.me_favorite_works_add
-        json_result = api.me_favorite_works_add(ref_work.id, publicity='private')
-        print(json_result)
-        favorite_id = json_result.response[0].id
-        print(">>> Add favorite illust_id=%s success! favorite_id=%s" % (ref_work.id, favorite_id))
 
-        # PAPI.me_favorite_works_delete
-        # json_result = api.me_favorite_works_delete([favorite_id, ...], publicity='private')
-        json_result = api.me_favorite_works_delete(favorite_id, publicity='private')
-        print(json_result)
+# the following was commented out due to unresolved variables
+# if _TEST_WRITE:
+#     # PAPI.me_favorite_works_add
+#     json_result = api.me_favorite_works_add(ref_work.id, publicity='private')
+#     print(json_result)
+#     favorite_id = json_result.response[0].id
+#     print(">>> Add favorite illust_id=%s success! favorite_id=%s" % (ref_work.id, favorite_id))
+#
+#     # PAPI.me_favorite_works_delete
+#     # json_result = api.me_favorite_works_delete([favorite_id, ...], publicity='private')
+#     json_result = api.me_favorite_works_delete(favorite_id, publicity='private')
+#     print(json_result)
 
-def papi_me_user(api):
+
+async def papi_me_user(api):
     # PAPI.me_following
     json_result = api.me_following()
     print(json_result)
@@ -243,7 +251,8 @@ def papi_me_user(api):
         json_result = api.me_favorite_users_unfollow(user_id)
         print(json_result)
 
-def papi_user(api):
+
+async def papi_user(api):
     # PAPI.users_works
     json_result = api.users_works(1184799)
     print(json_result)
@@ -268,7 +277,8 @@ def papi_user(api):
     user = json_result.response[0]
     print(user.name)
 
-def papi_ranking(api):
+
+async def papi_ranking(api):
     # PAPI.ranking
     json_result = api.ranking('illust', 'weekly', 1)
     print(json_result)
@@ -281,7 +291,8 @@ def papi_ranking(api):
     illust = json_result.response[0].works[0].work
     print(">>> %s origin url: %s" % (illust.title, illust.image_urls['large']))
 
-def papi_search(api):
+
+async def papi_search(api):
     # PAPI.search_works
     json_result = api.search_works("五航戦 姉妹", page=1, mode='text')
     # json_result = api.search_works("水遊び", page=1, mode='exact_tag')
@@ -289,7 +300,8 @@ def papi_search(api):
     illust = json_result.response[0]
     print(">>> %s origin url: %s" % (illust.title, illust.image_urls['large']))
 
-def papi_others(api):
+
+async def papi_others(api):
     # PAPI.latest_works (New -> Everyone)
     json_result = api.latest_works()
     print(json_result)
@@ -297,34 +309,36 @@ def papi_others(api):
     print(">>> %s url: %s" % (illust.title, illust.image_urls.px_480mw))
 
 
-def old_main():
+async def old_main():
     # public-api
-    api = PixivAPI(**_REQUESTS_KWARGS)
-    api.login(_USERNAME, _PASSWORD)
+    api = PixivAPI(**_AIOHTTP_KWARGS)
+    await api.login(_USERNAME, _PASSWORD)
 
-    migrate_rev2_to_papi(api)
+    await migrate_rev2_to_papi(api)
 
-    papi_base(api)
-    papi_me(api)
-    papi_me_user(api)
-    papi_user(api)
-    papi_ranking(api)
-    papi_search(api)
-    papi_others(api)
+    await papi_base(api)
+    await papi_me(api)
+    await papi_me_user(api)
+    await papi_user(api)
+    await papi_ranking(api)
+    await papi_search(api)
+    await papi_others(api)
 
-def main():
+
+async def main():
     # app-api
-    aapi = AppPixivAPI(**_REQUESTS_KWARGS)
+    aapi = AppPixivAPI(**_AIOHTTP_KWARGS)
 
-    aapi.login(_USERNAME, _PASSWORD)
-    
-    appapi_illust(aapi)
-    appapi_recommend(aapi)
-    appapi_users(aapi)
-    appapi_search(aapi)
-    appapi_ranking(aapi)
+    await aapi.login(_USERNAME, _PASSWORD)
 
-    appapi_auth_api(aapi)
+    await appapi_illust(aapi)
+    await appapi_recommend(aapi)
+    await appapi_users(aapi)
+    await appapi_search(aapi)
+    await appapi_ranking(aapi)
+
+    await appapi_auth_api(aapi)
+
 
 if __name__ == '__main__':
-    main()
+    asyncio.get_event_loop().run_until_complete(main())

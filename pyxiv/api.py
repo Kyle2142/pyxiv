@@ -1,10 +1,9 @@
-# -*- coding:utf-8 -*-
-
-import os
-import sys
-import shutil
+import asyncio
 import json
-import requests
+import os
+import shutil
+
+import aiohttp
 
 from .utils import PixivError, JsonDict
 
@@ -17,12 +16,16 @@ class BasePixivAPI(object):
     user_id = 0
     refresh_token = None
 
-    def __init__(self, **requests_kwargs):
-        """initialize requests kwargs if need be"""
-        self.requests = requests.Session()
-        self.requests_kwargs = requests_kwargs
+    def __init__(self, **aiohttp_kwargs):
+        """initialize aiohttp kwargs if need be"""
+        self.aiohttp = aiohttp.ClientSession()
+        self.aiohttp_kwargs = aiohttp_kwargs
 
-    def parse_json(self, json_str):
+    def __del__(self):
+        asyncio.create_task(self.aiohttp.close())
+
+    @staticmethod
+    def parse_json(json_str):
         """parse str into JsonDict"""
 
         def _obj_hook(pairs):
@@ -38,32 +41,34 @@ class BasePixivAPI(object):
         if self.access_token is None:
             raise PixivError('Authentication required! Call login() or set_auth() first!')
 
-    def requests_call(self, method, url, headers={}, params=None, data=None, stream=False):
-        """ requests http/https call for Pixiv API """
+    async def aiohttp_call(self, method, url, headers=None, params=None, data=None) -> aiohttp.ClientResponse:
+        """ aiohttp http/https call for Pixiv API """
+        if headers is None:
+            headers = {}
         try:
-            if (method == 'GET'):
-                return self.requests.get(url, params=params, headers=headers, stream=stream, **self.requests_kwargs)
-            elif (method == 'POST'):
-                return self.requests.post(url, params=params, data=data, headers=headers, stream=stream, **self.requests_kwargs)
-            elif (method == 'DELETE'):
-                return self.requests.delete(url, params=params, data=data, headers=headers, stream=stream, **self.requests_kwargs)
+            if method == 'GET':
+                return await self.aiohttp.get(url, params=params, headers=headers, **self.aiohttp_kwargs)
+            elif method == 'POST':
+                return await self.aiohttp.post(url, params=params, data=data, headers=headers, **self.aiohttp_kwargs)
+            elif method == 'DELETE':
+                return await self.aiohttp.delete(url, params=params, data=data, headers=headers, **self.aiohttp_kwargs)
         except Exception as e:
-            raise PixivError('requests %s %s error: %s' % (method, url, e))
+            raise PixivError('aiohttp %s %s error: %s' % (method, url, e))
 
-        raise PixivError('Unknow method: %s' % method)
+        raise PixivError('Unknown method: %s' % method)
 
     def set_auth(self, access_token, refresh_token=None):
         self.access_token = access_token
         self.refresh_token = refresh_token
 
-    def login(self, username, password):
-        return self.auth(username=username, password=password)
+    async def login(self, username, password):
+        return await self.auth(username=username, password=password)
 
     def set_client(self, client_id, client_secret):
         self.client_id = client_id
         self.client_secret = client_secret
 
-    def auth(self, username=None, password=None, refresh_token=None):
+    async def auth(self, username=None, password=None, refresh_token=None):
         """Login with password, or use the refresh_token to acquire a new bearer token"""
 
         url = 'https://oauth.secure.pixiv.net/auth/token'
@@ -84,14 +89,17 @@ class BasePixivAPI(object):
             data['grant_type'] = 'refresh_token'
             data['refresh_token'] = refresh_token or self.refresh_token
         else:
-            raise PixivError('[ERROR] auth() but no password or refresh_token is set.')
+            raise PixivError('auth() was called but no password or refresh_token was set')
 
-        r = self.requests_call('POST', url, headers=headers, data=data)
-        if (r.status_code not in [200, 301, 302]):
+        r = await self.aiohttp_call('POST', url, headers=headers, data=data)
+        r.text = await r.text()
+        if r.status not in [200, 301, 302]:
             if data['grant_type'] == 'password':
-                raise PixivError('[ERROR] auth() failed! check username and password.\nHTTP %s: %s' % (r.status_code, r.text), header=r.headers, body=r.text)
+                raise PixivError('auth() failed! check username and password.\nHTTP %s: %s' % (r.status, r.text),
+                                 header=r.headers, body=r.text)
             else:
-                raise PixivError('[ERROR] auth() failed! check refresh_token.\nHTTP %s: %s' % (r.status_code, r.text), header=r.headers, body=r.text)
+                raise PixivError('auth() failed! check refresh_token.\nHTTP %s: %s' % (r.status, r.text),
+                                 header=r.headers, body=r.text)
 
         token = None
         try:
@@ -101,12 +109,13 @@ class BasePixivAPI(object):
             self.user_id = token.response.user.id
             self.refresh_token = token.response.refresh_token
         except:
-            raise PixivError('Get access_token error! Response: %s' % (token), header=r.headers, body=r.text)
+            raise PixivError('Get access_token error! Response: %s' % token, header=r.headers, body=r.text)
 
         # return auth/token response
         return token
 
-    def download(self, url, prefix='', path=os.path.curdir, name=None, replace=False, referer='https://app-api.pixiv.net/'):
+    async def download(self, url, prefix='', path=os.path.curdir, name=None, replace=False,
+                       referer='https://app-api.pixiv.net/'):
         """Download image to file (use 6.0 app-api)"""
         if not name:
             name = prefix + os.path.basename(url)
@@ -116,7 +125,7 @@ class BasePixivAPI(object):
         img_path = os.path.join(path, name)
         if (not os.path.exists(img_path)) or replace:
             # Write stream to file
-            response = self.requests_call('GET', url, headers={ 'Referer': referer }, stream=True)
+            response = await self.aiohttp_call('GET', url, headers={'Referer': referer})
             with open(img_path, 'wb') as out_file:
                 shutil.copyfileobj(response.raw, out_file)
             del response
