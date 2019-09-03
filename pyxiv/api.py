@@ -20,9 +20,20 @@ class BasePixivAPI(object):
         """initialize aiohttp kwargs if need be"""
         self.aiohttp = aiohttp.ClientSession()
         self.aiohttp_kwargs = aiohttp_kwargs
+        self.additional_headers = {}
 
     def __del__(self):
         asyncio.create_task(self.aiohttp.close())
+
+    def set_additional_headers(self, headers):
+        """manually specify additional headers. will overwrite API default headers in case of collision"""
+        self.additional_headers = headers
+
+    # 设置HTTP的Accept-Language (用于获取tags的对应语言translated_name)
+    # language: en-us, zh-cn, ...
+    def set_accept_language(self, language):
+        """set header Accept-Language for all requests (useful for get tags.translated_name)"""
+        self.additional_headers['Accept-Language'] = language
 
     @staticmethod
     def parse_json(json_str):
@@ -45,6 +56,7 @@ class BasePixivAPI(object):
         """ aiohttp http/https call for Pixiv API """
         if headers is None:
             headers = {}
+        headers.update(self.additional_headers)
         try:
             if method == 'GET':
                 return await self.aiohttp.get(url, params=params, headers=headers, **self.aiohttp_kwargs)

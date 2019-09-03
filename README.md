@@ -2,6 +2,8 @@ Pyxiv [![Build Status](https://travis-ci.org/Kyle2142/pyxiv.svg)](https://travis
 ======
 _Pixiv API for Python (with Auth supported)_ Now async!
 
+* [2019/09/03] Merge upstream changes by Kyle2142
+* [2019/04/27] Support hosts proxy for AppAPI, which can use behind the Great Wall (See [example_api_proxy.py](https://github.com/upbit/pixivpy/blob/master/example_api_proxy.py))
 * [2018/01/23] Port from `requests` to `aiohttp` by Kyle2142
 * [2017/04/18] Fix encoder BUG for `illust_bookmark_add()/illust_bookmark_delete()` params (thanks [naplings](https://github.com/naplings))
 * [2017/01/05] Add `PixivAPI().works()` liked API `illust_detail()` for App-API (thanks [Mapaler](https://github.com/Mapaler)), release v3.3
@@ -57,6 +59,38 @@ asyncio.get_event_loop().run_until_complete(main(AppPixivAPI()))
 ### [Sniffer - Public API](https://github.com/upbit/pixivpy/wiki/sniffer)
 
 
+### [Using API proxy behind the Great Wall](https://github.com/upbit/pixivpy/blob/master/example_api_proxy.py#L33) See detail in [Issue#73](https://github.com/upbit/pixivpy/issues/73)
+
+Note that the below is from the upstream sync version:  
+
+1. Upgrade pixivpy >= **v3.2.0**: `pip install pixivpy --upgrade`
+2. Call `api.download()` like the below:
+
+~~~python
+aapi = AppPixivAPI()
+json_result = aapi.illust_ranking()
+for illust in json_result.illusts[:3]:
+    aapi.download(illust.image_urls.large)
+~~~
+
+### [Migrate pixivpy2 to pixivpy3](https://github.com/upbit/pixivpy/blob/master/demo.py#L15-L25)
+
+1. Replace `api.papi.*` to `api.*`
+2. Change deprecated SPAI call to Public-API call
+
+~~~python
+print(">>> new ranking_all(mode='daily', page=1, per_page=50)")
+#rank_list = api.sapi.ranking("all", 'day', 1)
+rank_list = api.ranking_all('daily', 1, 50)
+print(rank_list)
+
+# more fields about response: https://github.com/upbit/pixivpy/wiki/sniffer
+ranking = rank_list.response[0]
+for img in ranking.works:
+	#print img.work
+	print("[%s/%s(id=%s)] %s" % (img.work.user.name, img.work.title, img.work.id, img.work.image_urls.px_480mw))
+~~~
+
 ### About
 
 You might want to read [Pixiv Public-API (OAuth)分析](http://blog.imaou.com/opensource/2014/10/09/pixiv_api_for_ios_update.html)
@@ -96,7 +130,7 @@ class AppPixivAPI(BasePixivAPI):
     # 相关作品列表 (无需登录)
     async def illust_related(self, illust_id):
 
-    # 插画推荐 (Home - Main) (无需登录)
+    # 插画推荐 (Home - Main) 
     # content_type: [illust, manga]
     async def illust_recommended(self, content_type='illust'):
 
@@ -109,7 +143,7 @@ class AppPixivAPI(BasePixivAPI):
     # 趋势标签 (Search - tags) (无需登录)
     async def trending_tags_illust(self):
 
-    # 搜索 (Search) (无需登录)
+    # 搜索 (Search) 
     # search_target - 搜索类型
     #   partial_match_for_tags  - 标签部分一致
     #   exact_match_for_tags    - 标签完全一致
