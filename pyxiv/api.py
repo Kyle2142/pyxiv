@@ -26,7 +26,7 @@ class BasePixivAPI(object):
         self.additional_headers = {}
 
     def __del__(self):
-        asyncio.create_task(self.aiohttp.close())
+        asyncio.get_event_loop().run_until_complete(self.aiohttp.close())
 
     def set_additional_headers(self, headers):
         """manually specify additional headers. will overwrite API default headers in case of collision"""

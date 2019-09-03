@@ -151,13 +151,14 @@ class AppPixivAPI(BasePixivAPI):
         return await self.parse_result(r)
 
     # 相关作品列表
-    async def illust_related(self, illust_id, filter='for_ios', seed_illust_ids=None, req_auth=True):
+    async def illust_related(self, illust_id, filter='for_ios', seed_illust_ids=None, offset=None, req_auth=True):
         url = '%s/v2/illust/related' % self.hosts
         params = {
             'illust_id': illust_id,
-            'filter': filter,
-            'offset': offset,
+            'filter': filter
         }
+        if offset:
+            params['offset'] = offset
         if type(seed_illust_ids) == str:
             params['seed_illust_ids[]'] = [seed_illust_ids]
         if type(seed_illust_ids) == list:
