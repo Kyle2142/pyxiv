@@ -5,6 +5,7 @@ from .api import BasePixivAPI
 from .utils import PixivError
 
 
+
 # App-API (6.x - app-api.pixiv.net)
 class AppPixivAPI(BasePixivAPI):
 
@@ -19,6 +20,8 @@ class AppPixivAPI(BasePixivAPI):
 
     # Check auth and set BearerToken to headers
     async def no_auth_aiohttp_call(self, method, url, headers=None, params=None, data=None, req_auth=True):
+        if self.hosts != "https://app-api.pixiv.net":
+            headers['host'] = 'app-api.pixiv.net'
         if headers is None:
             headers = {}
         if headers.get('User-Agent', None) is None and headers.get('user-agent', None) is None:

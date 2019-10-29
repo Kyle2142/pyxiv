@@ -53,7 +53,8 @@ class BasePixivAPI(object):
 
     def require_auth(self):
         if self.access_token is None:
-            raise PixivError('Authentication required! Call login() or set_auth() first!')
+            raise PixivError(
+                'Authentication required! Call login() or set_auth() first!')
 
     async def aiohttp_call(self, method, url, headers=None, params=None, data=None) -> aiohttp.ClientResponse:
         """ aiohttp http/https call for Pixiv API """
@@ -85,14 +86,18 @@ class BasePixivAPI(object):
 
     async def auth(self, username=None, password=None, refresh_token=None):
         """Login with password, or use the refresh_token to acquire a new bearer token"""
-
-        url = 'https://oauth.secure.pixiv.net/auth/token'
-        local_time = datetime.now().isoformat()
+        local_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+00:00')
         headers = {
             'User-Agent': 'PixivAndroidApp/5.0.64 (Android 6.0)',
             'X-Client-Time': local_time,
-            'X-Client-Hash': hashlib.md5((local_time+self.hash_secret).encode('utf-8')).hexdigest(),
+            'X-Client-Hash': hashlib.md5((local_time + self.hash_secret).encode('utf-8')).hexdigest(),
         }
+        if not hasattr(self, 'hosts') or self.hosts == "https://app-api.pixiv.net":
+            auth_hosts = "https://oauth.secure.pixiv.net"
+        else:
+            auth_hosts = self.hosts  # BAPI解析成IP的场景
+            headers['host'] = 'oauth.secure.pixiv.net'
+        url = '%s/auth/token' % auth_hosts
         data = {
             'get_secure_url': 1,
             'client_id': self.client_id,
@@ -107,17 +112,24 @@ class BasePixivAPI(object):
             data['grant_type'] = 'refresh_token'
             data['refresh_token'] = refresh_token or self.refresh_token
         else:
-            raise PixivError('auth() was called but no password or refresh_token was set')
+            raise PixivError(
+                'auth() was called but no password or refresh_token was set')
 
         r = await self.aiohttp_call('POST', url, headers=headers, data=data)
         r.text = await r.text()
         if r.status not in [200, 301, 302]:
             if data['grant_type'] == 'password':
-                raise PixivError('auth() failed! check username and password.\nHTTP %s: %s' % (r.status, r.text),
-                                 header=r.headers, body=r.text)
+                raise PixivError(
+                    '[ERROR] auth() failed! check username and password.\nHTTP %s: %s' % (
+                        r.status_code, r.text),
+                    header=r.headers, body=r.text
+                )
             else:
-                raise PixivError('auth() failed! check refresh_token.\nHTTP %s: %s' % (r.status, r.text),
-                                 header=r.headers, body=r.text)
+                raise PixivError(
+                    '[ERROR] auth() failed! check refresh_token.\nHTTP %s: %s' % (
+                        r.status_code, r.text),
+                    header=r.headers, body=r.text
+                )
 
         token = None
         try:
@@ -127,23 +139,30 @@ class BasePixivAPI(object):
             self.user_id = token.response.user.id
             self.refresh_token = token.response.refresh_token
         except:
-            raise PixivError('Get access_token error! Response: %s' % token, header=r.headers, body=r.text)
+            raise PixivError('Get access_token error! Response: %s' %
+                             token, header=r.headers, body=r.text)
 
         # return auth/token response
         return token
 
-    async def download(self, url, prefix='', path=os.path.curdir, name=None, replace=False,
-                       referer='https://app-api.pixiv.net/'):
-        """Download image to file (use 6.0 app-api)"""
-        if not name:
-            name = prefix + os.path.basename(url)
-        else:
-            name = prefix + name
 
-        img_path = os.path.join(path, name)
-        if (not os.path.exists(img_path)) or replace:
-            # Write stream to file
-            response = await self.aiohttp_call('GET', url, headers={'Referer': referer})
-            with open(img_path, 'wb') as out_file:
-                shutil.copyfileobj(response.raw, out_file)
-            del response
+   async def download(self, url, prefix='', path=os.path.curdir, name=None, replace=False,
+                       referer='https://app-api.pixiv.net/'):
+   """Download image to file (use 6.0 app-api)"""
+    if not name:
+        name = prefix + os.path.basename(url)
+    else:
+        name = prefix + name
+
+    img_path = os.path.join(path, name)
+    if (not os.path.exists(img_path)) or replace:
+        # Write stream to file
+<< << << < HEAD: pyxiv/api.py
+   response = await self.aiohttp_call('GET', url, headers={'Referer': referer})
+== == == =
+   response = self.requests_call(
+       'GET', url, headers={'Referer': referer}, stream=True)
+>>>>>> > upstream/master: pixivpy3/api.py
+   with open(img_path, 'wb') as out_file:
+        shutil.copyfileobj(response.raw, out_file)
+    del response
